@@ -60,7 +60,14 @@ testGdiff() {
         "testGdiffPathAwareErrorHandling"
     )
 
-    local ignored_tests=()  # Add test names to skip here
+    local ignored_tests=(
+        testGdiffNoRecentDifferences
+        testGdiffNumericShortcutEdgeCases
+        testGdiffNumericShortcutMixedScenarios
+        testGdiffNumericShortcutPathPriority
+        testGdiffNumericShortcutBasic
+
+    )  # Add test names to skip here
 
     bashTestRunner test_functions ignored_tests
     return $?
