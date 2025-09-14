@@ -1,4 +1,3 @@
-//begin tests/testGdiff.sh
 #!/usr/bin/env bash
 # Complete test suite for gdiff utility function with all features
 # Tests various functionality including:
@@ -13,6 +12,7 @@
 # - Automatic last commit detection for paths
 # - Numeric shortcut functionality
 # - Relative path resolution from different working directories
+# - Absolute path handling within and outside git repositories
 
 testGdiff() {
     export LC_NUMERIC=C  # Ensure consistent numeric formatting
@@ -47,6 +47,17 @@ testGdiff() {
         "testGdiffRelativePathWithCommit"
         "testGdiffRelativePathNumericShortcut"
         "testGdiffSpecificScenario"
+        "testGdiffAbsolutePathBasic"
+        "testGdiffAbsolutePathWithCommit"
+        "testGdiffAbsolutePathNumericShortcut"
+        "testGdiffAbsolutePathDirectory"
+        "testGdiffAbsolutePathFromSubdirectory"
+        "testGdiffAbsolutePathOutsideRepo"
+        "testGdiffAbsolutePathNumericConflict"
+        "testGdiffAbsolutePathSymlinks"
+        "testGdiffAbsolutePathNormalization"
+        "testGdiffAbsolutePathDeepNesting"
+        "testGdiffAbsolutePathAutoLastCommit"
     )
 
     local ignored_tests=()  # Add test names to skip here
@@ -54,4 +65,3 @@ testGdiff() {
     bashTestRunner test_functions ignored_tests
     return $?
 }
-//end tests/testGdiff.sh

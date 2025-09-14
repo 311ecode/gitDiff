@@ -10,15 +10,13 @@ gdiff_parse_args() {
         echo "DEBUG: '$1' is number; check path..." >&2
       fi
 
-      # Resolve path to check if it exists
-      local resolved_path
-      resolved_path=$(gdiff_resolve_path "$1")
-      
-      if [[ -e "$resolved_path" ]]; then
-        path="$resolved_path"
+      # For numeric arguments, we need to check if a path with that name exists
+      # This handles both relative paths like "./2" and absolute paths
+      if gdiff_path_exists "$1"; then
+        path=$(gdiff_resolve_path "$1")
         useLastCommit=true
         [[ -n "${DEBUG:-}" ]] && \
-          echo "DEBUG: '$1' exists at '$resolved_path'; treat as path" >&2
+          echo "DEBUG: '$1' exists; resolved to '$path' and treated as path" >&2
 
         if [[ $# -gt 1 ]]; then
           if [[ "$2" =~ ^(~[0-9]+|HEAD([~^][0-9]*)?|HEAD|[0-9a-fA-F]{7,})$ ]]; then
@@ -58,7 +56,7 @@ gdiff_parse_args() {
           echo "DEBUG: Second '$2' resolved to '$path' and set as path" >&2
       fi
 
-    # 3) Otherwise treat as a regular path
+    # 3) Otherwise treat as a regular path (could be absolute or relative)
     else
       path=$(gdiff_resolve_path "$1")
       useLastCommit=true
