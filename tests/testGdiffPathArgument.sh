@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Tests path argument handling
+# Verifies that gdiff correctly accepts and processes file/directory path arguments
+
 testGdiffPathArgument() {
         echo "🧪 Testing path argument handling"
         

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Tests number-only commit references (N)
+# Verifies that gdiff correctly handles numeric commit references
+
 testGdiffNumberNotation() {
         echo "🧪 Testing number-only commit references"
         

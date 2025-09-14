@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Tests HEAD notation variants (HEAD~N, HEAD^N)
+# Verifies that gdiff correctly handles explicit HEAD notation
+
 testGdiffHeadNotation() {
         echo "🧪 Testing HEAD notation variants"
         

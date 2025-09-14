@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Tests tilde notation commit references (~N)
+# Verifies that gdiff correctly handles and expands ~N notation to HEAD~N
+
 testGdiffTildeNotation() {
         echo "🧪 Testing ~ notation commit references"
         

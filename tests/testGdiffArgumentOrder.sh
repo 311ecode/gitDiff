@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Tests argument order flexibility
+# Verifies that gdiff accepts both "commit path" and "path commit" argument orders
+
 testGdiffArgumentOrder() {
         echo "🧪 Testing argument order flexibility"
         
