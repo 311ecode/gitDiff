@@ -10,11 +10,15 @@ gdiff_parse_args() {
         echo "DEBUG: '$1' is number; check path..." >&2
       fi
 
-      if [[ -e "$1" ]]; then
-        path="$1"
+      # Resolve path to check if it exists
+      local resolved_path
+      resolved_path=$(gdiff_resolve_path "$1")
+      
+      if [[ -e "$resolved_path" ]]; then
+        path="$resolved_path"
         useLastCommit=true
         [[ -n "${DEBUG:-}" ]] && \
-          echo "DEBUG: '$1' exists; treat as path" >&2
+          echo "DEBUG: '$1' exists at '$resolved_path'; treat as path" >&2
 
         if [[ $# -gt 1 ]]; then
           if [[ "$2" =~ ^(~[0-9]+|HEAD([~^][0-9]*)?|HEAD|[0-9a-fA-F]{7,})$ ]]; then
@@ -35,10 +39,10 @@ gdiff_parse_args() {
           echo "DEBUG: No path '$1'; use $commit" >&2
 
         if [[ $# -gt 1 ]]; then
-          path="$2"
+          path=$(gdiff_resolve_path "$2")
           useLastCommit=true
           [[ -n "${DEBUG:-}" ]] && \
-            echo "DEBUG: Second '$2' set as path" >&2
+            echo "DEBUG: Second '$2' resolved to '$path' and set as path" >&2
         fi
       fi
 
@@ -48,18 +52,18 @@ gdiff_parse_args() {
       [[ -n "${DEBUG:-}" ]] && \
         echo "DEBUG: '$1' is commit" >&2
       if [[ $# -gt 1 ]]; then
-        path="$2"
+        path=$(gdiff_resolve_path "$2")
         useLastCommit=true
         [[ -n "${DEBUG:-}" ]] && \
-          echo "DEBUG: Second '$2' set as path" >&2
+          echo "DEBUG: Second '$2' resolved to '$path' and set as path" >&2
       fi
 
     # 3) Otherwise treat as a regular path
     else
-      path="$1"
+      path=$(gdiff_resolve_path "$1")
       useLastCommit=true
       [[ -n "${DEBUG:-}" ]] && \
-        echo "DEBUG: '$1' treated as path" >&2
+        echo "DEBUG: '$1' resolved to '$path' and treated as path" >&2
 
       if [[ $# -gt 1 ]]; then
         if [[ "$2" =~ ^(~[0-9]+|HEAD([~^][0-9]*)?|HEAD|[0-9a-fA-F]{7,})$ ]]; then
