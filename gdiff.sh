@@ -1,85 +1,163 @@
 gdiff() {
-    # Check if we're in a git repository
-    if ! git rev-parse --git-dir > /dev/null 2>&1; then
-        echo "Error: Not in a git repository" >&2
+  # Check if we're in a git repository
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "Error: Not in a git repository" >&2
+    return 1
+  fi
+
+  local commit="HEAD~1"         # default: previous commit
+  local path="."                # default: current directory
+  local useLastCommit=false
+
+  if [[ -n "${DEBUG:-}" ]]; then
+    echo "DEBUG: Starting gdiff with $# args: $*" >&2
+  fi
+
+  # ----------------- argument parsing -----------------
+  if [[ $# -gt 0 ]]; then
+    if [[ -n "${DEBUG:-}" ]]; then
+      echo "DEBUG: First arg: '$1'" >&2
+    fi
+
+    # 1) Bare number first → may be path or commit shortcut
+    if [[ "$1" =~ ^[0-9]+$ ]]; then
+      if [[ -n "${DEBUG:-}" ]]; then
+        echo "DEBUG: '$1' is number; check path..." >&2
+      fi
+
+      if [[ -e "$1" ]]; then
+        path="$1"
+        useLastCommit=true
+        [[ -n "${DEBUG:-}" ]] && \
+          echo "DEBUG: '$1' exists; treat as path" >&2
+
+        if [[ $# -gt 1 ]]; then
+          if [[ "$2" =~ ^(~[0-9]+|HEAD([~^][0-9]*)?|HEAD|[0-9a-fA-F]{7,})$ ]]; then
+            commit="$2"
+            useLastCommit=false
+            [[ -n "${DEBUG:-}" ]] && \
+              echo "DEBUG: Second '$2' is commit" >&2
+          elif [[ "$2" =~ ^[0-9]+$ ]]; then
+            commit="HEAD~$2"
+            useLastCommit=false
+            [[ -n "${DEBUG:-}" ]] && \
+              echo "DEBUG: Second '$2' → $commit" >&2
+          fi
+        fi
+      else
+        commit="HEAD~$1"
+        [[ -n "${DEBUG:-}" ]] && \
+          echo "DEBUG: No path '$1'; use $commit" >&2
+
+        if [[ $# -gt 1 ]]; then
+          path="$2"
+          useLastCommit=true
+          [[ -n "${DEBUG:-}" ]] && \
+            echo "DEBUG: Second '$2' set as path" >&2
+        fi
+      fi
+
+    # 2) Standard commit refs (tilde, HEAD, 7+ hex)
+    elif [[ "$1" =~ ^(~[0-9]+|HEAD([~^][0-9]*)?|HEAD|[0-9a-fA-F]{7,})$ ]]; then
+      commit="$1"
+      [[ -n "${DEBUG:-}" ]] && \
+        echo "DEBUG: '$1' is commit" >&2
+      if [[ $# -gt 1 ]]; then
+        path="$2"
+        useLastCommit=true
+        [[ -n "${DEBUG:-}" ]] && \
+          echo "DEBUG: Second '$2' set as path" >&2
+      fi
+
+    # 3) Otherwise treat as a regular path
+    else
+      path="$1"
+      useLastCommit=true
+      [[ -n "${DEBUG:-}" ]] && \
+        echo "DEBUG: '$1' treated as path" >&2
+
+      if [[ $# -gt 1 ]]; then
+        if [[ "$2" =~ ^(~[0-9]+|HEAD([~^][0-9]*)?|HEAD|[0-9a-fA-F]{7,})$ ]]; then
+          commit="$2"
+          useLastCommit=false
+          [[ -n "${DEBUG:-}" ]] && \
+            echo "DEBUG: Second '$2' is commit" >&2
+        elif [[ "$2" =~ ^[0-9]+$ ]]; then
+          commit="HEAD~$2"
+          useLastCommit=false
+          [[ -n "${DEBUG:-}" ]] && \
+            echo "DEBUG: Second '$2' → $commit" >&2
+        fi
+      fi
+    fi
+  fi
+  # ----------------------------------------------------
+
+  # Auto-detect last commit for specific path
+  if [[ "$useLastCommit" == true && "$path" != "." ]]; then
+    [[ -n "${DEBUG:-}" ]] && \
+      echo "DEBUG: Finding last commit for '$path'..." >&2
+    local lastCommit
+    lastCommit=$(git log -1 --format=%H -- "$path" 2>/dev/null)
+    if [[ -n "$lastCommit" ]]; then
+      commit="$lastCommit"
+      [[ -n "${DEBUG:-}" ]] && \
+        echo "DEBUG: Using last commit: $commit" >&2
+    else
+      if [[ ! -e "$path" ]]; then
+        echo "Error: Path '$path' does not exist" >&2
         return 1
+      fi
+      # Uncommitted/new path → compare against HEAD (not HEAD~1)
+      commit="HEAD"
+      [[ -n "${DEBUG:-}" ]] && \
+        echo "DEBUG: No history; fallback to $commit" >&2
     fi
+  fi
 
-    local commit="HEAD~1"  # Default to previous commit
-    local path="."         # Default to current directory
-    local use_last_commit=false
-    
-    # Debug output if DEBUG is set
-    if [[ -n "${DEBUG:-}" ]]; then
-        echo "DEBUG: Starting gdiff with $# arguments: $*" >&2
-    fi
-    
-    # Parse arguments
-    if [[ $# -gt 0 ]]; then
-        # Check if first argument is a commit reference (starts with ~, HEAD, or looks like a hash)
-        if [[ "$1" =~ ^(~[0-9]*|HEAD([~^][0-9]*)?|[0-9a-fA-F]+)$ ]]; then
-            commit="$1"
-            # If there's a second argument, use it as path
-            if [[ $# -gt 1 ]]; then
-                path="$2"
-                # If path is specified (not default), use last commit for that path
-                use_last_commit=true
-            fi
+  # Expand ~N → HEAD~N
+  if [[ "$commit" =~ ^~[0-9]+$ ]]; then
+    commit="HEAD${commit}"
+    [[ -n "${DEBUG:-}" ]] && \
+      echo "DEBUG: Expanded to $commit" >&2
+  fi
+
+  # Handle default commit when HEAD~1 doesn't exist (shallow repo)
+  if [[ "$commit" == "HEAD~1" ]] && ! git rev-parse --verify -q "$commit" >/dev/null; then
+    commit="HEAD"
+    [[ -n "${DEBUG:-}" ]] && \
+      echo "DEBUG: HEAD~1 not available; using HEAD" >&2
+  fi
+
+  # Clamp too-deep ancestry (HEAD~N) to repo history depth
+  if ! git rev-parse --verify -q "$commit" >/dev/null; then
+    if [[ "$commit" =~ ^HEAD~([0-9]+)$ ]]; then
+      local wantN="${BASH_REMATCH[1]}"
+      local count
+      count=$(git rev-list --count HEAD 2>/dev/null || echo 1)
+      local maxN=$(( count > 0 ? count - 1 : 0 ))
+      if (( wantN > maxN )); then
+        if (( maxN <= 0 )); then
+          commit="HEAD"
         else
-            # First argument is a path
-            path="$1"
-            use_last_commit=true  # Path specified, use last commit for that path
-            
-            # If there's a second argument that looks like a commit, use it instead of last commit
-            if [[ $# -gt 1 ]] && [[ "$2" =~ ^(~[0-9]*|HEAD([~^][0-9]*)?|[0-9a-fA-F]+)$ ]]; then
-                commit="$2"
-                use_last_commit=false  # Explicit commit provided, don't use last commit
-            fi
+          commit="HEAD~$maxN"
         fi
+        [[ -n "${DEBUG:-}" ]] && \
+          echo "DEBUG: Clamped to existing $commit" >&2
+      fi
     fi
+  fi
 
-    # If we should use the last commit for the specified path
-    if [[ "$use_last_commit" == true && "$path" != "." ]]; then
-        local last_commit
-        last_commit=$(git log -1 --format=%H -- "$path" 2>/dev/null)
-        if [[ -n "$last_commit" ]]; then
-            commit="$last_commit"
-            if [[ -n "${DEBUG:-}" ]]; then
-                echo "DEBUG: Using last commit for '$path': $commit" >&2
-            fi
-        else
-            # No commits found for this path, check if path exists
-            if [[ ! -e "$path" ]]; then
-                echo "Error: Path '$path' does not exist" >&2
-                return 1
-            fi
-            if [[ -n "${DEBUG:-}" ]]; then
-                echo "DEBUG: No commits found for path '$path', using default commit" >&2
-            fi
-        fi
-    fi
+  # Final debug and execute
+  if [[ -n "${DEBUG:-}" ]]; then
+    echo "DEBUG: Final - commit: '$commit', path: '$path'" >&2
+    echo "DEBUG: Executing: git diff \"$commit\" -- \"$path\"" >&2
+  fi
 
-    # Expand relative commit references like ~2 to HEAD~2
-    if [[ "$commit" =~ ^~[0-9]*$ ]]; then
-        commit="HEAD${commit}"
-        if [[ -n "${DEBUG:-}" ]]; then
-            echo "DEBUG: Expanded commit reference to: $commit" >&2
-        fi
-    fi
+  git diff "$commit" -- "$path"
+  local exitStatus=$?
 
-    # Debug output if DEBUG is set
-    if [[ -n "${DEBUG:-}" ]]; then
-        echo "DEBUG: Final parameters - commit: '$commit', path: '$path'" >&2
-        echo "DEBUG: Executing: git diff \"$commit\" -- \"$path\"" >&2
-    fi
-
-    # Execute git diff
-    git diff "$commit" -- "$path"
-    
-    # Debug exit status
-    if [[ -n "${DEBUG:-}" ]]; then
-        local exit_status=$?
-        echo "DEBUG: git diff exited with status: $exit_status" >&2
-        return $exit_status
-    fi
+  [[ -n "${DEBUG:-}" ]] && \
+    echo "DEBUG: git diff exit: $exitStatus" >&2
+  return $exitStatus
 }
