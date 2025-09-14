@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Tests the default behavior of gdiff with no arguments
+# Verifies that gdiff works without any parameters and defaults to comparing
+# current directory with the previous commit (HEAD~1)
+
 testGdiffDefaultBehavior() {
         echo "🧪 Testing default behavior (no arguments)"
         

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Tests commit hash references
+# Verifies that gdiff correctly handles full commit hash references
+
 testGdiffCommitHash() {
         echo "🧪 Testing commit hash references"
         

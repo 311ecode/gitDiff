@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Tests error handling when not in a git repository
+# Verifies that gdiff correctly detects and reports non-git repository environments
+
 testGdiffNotGitRepo() {
         echo "🧪 Testing error handling (not a git repo)"
         
