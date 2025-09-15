@@ -1,18 +1,5 @@
 #!/usr/bin/env bash
 # Complete test suite for gdiff utility function with all features
-# Tests various functionality including:
-# - Default behavior with no arguments
-# - Commit reference notations (~N, HEAD~N, commit hashes, numeric shortcuts)
-# - Path argument handling
-# - Argument order flexibility
-# - Error handling in non-git repositories
-# - Directory-specific diff functionality
-# - Nested directory support
-# - File vs directory diff distinction
-# - Automatic last commit detection for paths
-# - Numeric shortcut functionality
-# - Relative path resolution from different working directories
-# - Absolute path handling within and outside git repositories
 
 testGdiff() {
     export LC_NUMERIC=C  # Ensure consistent numeric formatting
@@ -58,6 +45,15 @@ testGdiff() {
         "testGdiffAbsolutePathNormalization"
         "testGdiffAbsolutePathDeepNesting"
         "testGdiffAbsolutePathAutoLastCommit"
+        "testGdiffAbsolutePathGitRelativeConversion"
+        "testGdiffAbsolutePathFromDifferentWorkingDir"
+        "testGdiffAbsolutePathDebugOutput"
+        "testGdiffCommitValidationBasic"
+        "testGdiffGapInformation"
+        "testGdiffCommitSuggestions"
+        "testGdiffCurrentMatchesLastCommit"
+        "testGdiffNoRecentDifferences"
+        "testGdiffWithActualWorkingChanges"
     )
 
     local ignored_tests=()  # Add test names to skip here
