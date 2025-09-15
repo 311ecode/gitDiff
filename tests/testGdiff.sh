@@ -54,6 +54,10 @@ testGdiff() {
         "testGdiffCurrentMatchesLastCommit"
         "testGdiffNoRecentDifferences"
         "testGdiffWithActualWorkingChanges"
+        "testGdiffPathAwareNumericBasic"
+        "testGdiffPathAwareNumericMultiple"
+        "testGdiffPathAwareWithUnrelatedCommits"
+        "testGdiffPathAwareErrorHandling"
     )
 
     local ignored_tests=()  # Add test names to skip here

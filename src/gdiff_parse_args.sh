@@ -4,14 +4,13 @@ gdiff_parse_args() {
       echo "DEBUG: First arg: '$1'" >&2
     fi
 
-    # 1) Bare number first → may be path or commit shortcut
+    # 1) Bare number first → may be path or path-aware numeric shortcut
     if [[ "$1" =~ ^[0-9]+$ ]]; then
       if [[ -n "${DEBUG:-}" ]]; then
         echo "DEBUG: '$1' is number; check path..." >&2
       fi
 
       # For numeric arguments, we need to check if a path with that name exists
-      # This handles both relative paths like "./2" and absolute paths
       if gdiff_path_exists "$1"; then
         path=$(gdiff_resolve_path "$1")
         useLastCommit=true
@@ -25,10 +24,10 @@ gdiff_parse_args() {
             [[ -n "${DEBUG:-}" ]] && \
               echo "DEBUG: Second '$2' is commit" >&2
           elif [[ "$2" =~ ^[0-9]+$ ]]; then
-            commit="HEAD~$2"
-            useLastCommit=false
+            # Path-aware numeric shortcut: find Nth different commit for this path
+            useLastCommit="nth_different:$2"
             [[ -n "${DEBUG:-}" ]] && \
-              echo "DEBUG: Second '$2' → $commit" >&2
+              echo "DEBUG: Second '$2' → find ${2}th different commit for path" >&2
           fi
         fi
       else
@@ -70,10 +69,10 @@ gdiff_parse_args() {
           [[ -n "${DEBUG:-}" ]] && \
             echo "DEBUG: Second '$2' is commit" >&2
         elif [[ "$2" =~ ^[0-9]+$ ]]; then
-          commit="HEAD~$2"
-          useLastCommit=false
+          # Path-aware numeric shortcut: find Nth different commit for this path
+          useLastCommit="nth_different:$2"
           [[ -n "${DEBUG:-}" ]] && \
-            echo "DEBUG: Second '$2' → $commit" >&2
+            echo "DEBUG: Second '$2' → find ${2}th different commit for path" >&2
         fi
       fi
     fi
