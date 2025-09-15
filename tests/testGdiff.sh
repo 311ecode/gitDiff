@@ -61,12 +61,6 @@ testGdiff() {
     )
 
     local ignored_tests=(
-        testGdiffNoRecentDifferences
-        testGdiffNumericShortcutEdgeCases
-        testGdiffNumericShortcutMixedScenarios
-        testGdiffNumericShortcutPathPriority
-        testGdiffNumericShortcutBasic
-
     )  # Add test names to skip here
 
     bashTestRunner test_functions ignored_tests
