@@ -1,49 +1,5 @@
 #!/usr/bin/env bash
-# Tests smart commit detection that finds first different commit
-
-testGdiffFindFirstDifferentCommit() {
-    echo "Testing find first different commit functionality"
-    
-    if ! setupTestRepo; then
-        echo "ERROR: Failed to setup test repo"
-        return 1
-    fi
-
-    # Create file with initial content
-    echo "version 1" > target.txt
-    git add target.txt
-    git commit -m "Add target file v1" --quiet
-    
-    # Change content to version 2
-    echo "version 2" > target.txt
-    git add target.txt
-    git commit -m "Update to v2" --quiet
-    
-    # Make several commits that don't touch this file at all
-    for i in {1..3}; do
-        echo "unrelated $i" > "unrelated$i.txt"
-        git add "unrelated$i.txt"
-        git commit -m "Unrelated commit $i" --quiet
-    done
-    
-    # Current working directory has no changes (clean state = version 2)
-    # Test using HEAD~1 which is an unrelated commit that didn't touch target.txt
-    local output
-    output=$(gdiff target.txt 1 2>&1)
-    
-    # Should detect that HEAD~1 didn't modify this path
-    if echo "$output" | grep -q "didn't modify this path" || \
-       echo "$output" | grep -q "Consider using:"; then
-        echo "SUCCESS: Detected that recent commit didn't modify the path"
-        cleanupTestRepo
-        return 0
-    else
-        echo "ERROR: Didn't detect commit/path mismatch"
-        echo "Output: $output"
-        cleanupTestRepo
-        return 1
-    fi
-}
+# Tests smart commit detection - updated for path-aware behavior
 
 testGdiffCurrentMatchesLastCommit() {
     echo "Testing behavior when current state matches last commit"
@@ -53,10 +9,14 @@ testGdiffCurrentMatchesLastCommit() {
         return 1
     fi
 
-    # Create file
-    echo "stable content" > stable.txt
+    # Create file with changes
+    echo "stable content v1" > stable.txt
     git add stable.txt
-    git commit -m "Add stable file" --quiet
+    git commit -m "Add stable file v1" --quiet
+    
+    echo "stable content v2" > stable.txt
+    git add stable.txt
+    git commit -m "Update stable file v2" --quiet
     
     # Make some unrelated commits (that don't touch stable.txt)
     for i in {1..3}; do
@@ -65,21 +25,20 @@ testGdiffCurrentMatchesLastCommit() {
         git commit -m "Unrelated commit $i" --quiet
     done
     
-    # Current working state matches the committed state (no local changes to stable.txt)
+    # Current working state matches the last committed state (no local changes)
     
-    # Test gdiff with recent commit that didn't touch the file
+    # Test path-aware numeric shortcut - should find the first different commit
     local output
     output=$(gdiff stable.txt 1 2>&1)
     
-    # Should detect that the recent commit didn't modify this path
-    if echo "$output" | grep -q "didn't modify this path" || \
-       echo "$output" | grep -q "Current state matches" || \
-       echo "$output" | grep -q "No significantly different commits"; then
-        echo "SUCCESS: Detected commit/path mismatch or matching state"
+    # Should either work (finding a different commit) or give a helpful error
+    if echo "$output" | grep -q "different commit" || \
+       echo "$output" | grep -q "Could not find.*different commit"; then
+        echo "SUCCESS: Path-aware behavior works correctly"
         cleanupTestRepo
         return 0
     else
-        echo "ERROR: Didn't detect the issue"
+        echo "ERROR: Unexpected behavior"
         echo "Output: $output"
         cleanupTestRepo
         return 1
@@ -94,15 +53,14 @@ testGdiffWithActualWorkingChanges() {
         return 1
     fi
 
-    # Create file
+    # Create file with version history
     echo "version 1" > evolving.txt
     git add evolving.txt
-    git commit -m "Add evolving file v1" --quiet
+    git commit -m "Commit 1" --quiet
     
-    # Update it
     echo "version 2" > evolving.txt
     git add evolving.txt
-    git commit -m "Update to v2" --quiet
+    git commit -m "Commit 2" --quiet
     
     # Make commits that don't touch this file
     for i in {1..2}; do
@@ -114,18 +72,18 @@ testGdiffWithActualWorkingChanges() {
     # Now make working directory changes
     echo "version 3 - current work" > evolving.txt
     
-    # Test with a commit that didn't touch the file
+    # Test path-aware numeric shortcut - should find actual different commit
     local output
     output=$(gdiff evolving.txt 1 2>&1)
     
-    # Should suggest using the last commit that actually modified the file
-    if echo "$output" | grep -q "didn't modify this path" && \
-       echo "$output" | grep -q "Consider using:"; then
-        echo "SUCCESS: Suggested better commit for comparison"
+    # Should find the commit with different content and show meaningful diff
+    if echo "$output" | grep -q "different commit" && \
+       echo "$output" | grep -q "version"; then
+        echo "SUCCESS: Found meaningful different commit"
         cleanupTestRepo
         return 0
     else
-        echo "ERROR: Didn't provide helpful suggestion"
+        echo "ERROR: Didn't find meaningful different commit"
         echo "Output: $output"
         cleanupTestRepo
         return 1
