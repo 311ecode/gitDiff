@@ -1,5 +1,5 @@
 gdiff() {
-    eval "$(markdown-show-help-registration -rp ../README.md)"
+    command -v markdown-show-help-registration &>/dev/null && eval "$(markdown-show-help-registration -rp ../README.md)"
   # Check if we're in a git repository
   if ! git rev-parse --git-dir >/dev/null 2>&1; then
     echo "Error: Not in a git repository" >&2
